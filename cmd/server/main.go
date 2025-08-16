@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"os"
 	"os/signal"
 	"time"
-	"errors"
-	"io"
 
 	hellopb "golang-grpc/pkg/grpc"
 	"google.golang.org/grpc"
@@ -58,6 +58,24 @@ func (s *myServer) HelloClientStream(stream hellopb.GreetingService_HelloClientS
 		nameList = append(nameList, req.GetName())
 	}
 	return nil
+}
+
+func (s *myServer) HelloBiStream(stream hellopb.GreetingService_HelloBiStreamServer) error {
+	for {
+		req, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		message := fmt.Sprintf("Hello, %v!", req.GetName())
+		if err := stream.Send(&hellopb.HelloResponse{
+			Message: message,
+		}); err != nil {
+			return err
+		}
+	}
 }
 
 func NewMyServer() *myServer {
