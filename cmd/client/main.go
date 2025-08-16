@@ -14,7 +14,7 @@ import (
 
 var (
 	scanner *bufio.Scanner
-	client hellopb.GreetingServiceClient
+	client  hellopb.GreetingServiceClient
 )
 
 func main() {

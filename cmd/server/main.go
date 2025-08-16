@@ -7,7 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	
+
 	hellopb "golang-grpc/pkg/grpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -38,7 +38,7 @@ func main() {
 
 	s := grpc.NewServer()
 
-	hellopb.RegisterGreetingServiceServer(s,NewMyServer())
+	hellopb.RegisterGreetingServiceServer(s, NewMyServer())
 
 	reflection.Register(s)
 
