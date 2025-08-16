@@ -21,6 +21,8 @@ type GreetingServiceClient interface {
 	Hello(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (*HelloResponse, error)
 	// サーバーストリーミング
 	HelloServerStream(ctx context.Context, in *HelloRequest, opts ...grpc.CallOption) (GreetingService_HelloServerStreamClient, error)
+	// クライアントストリーミング
+	HelloClientStream(ctx context.Context, opts ...grpc.CallOption) (GreetingService_HelloClientStreamClient, error)
 }
 
 type greetingServiceClient struct {
@@ -72,6 +74,40 @@ func (x *greetingServiceHelloServerStreamClient) Recv() (*HelloResponse, error) 
 	return m, nil
 }
 
+func (c *greetingServiceClient) HelloClientStream(ctx context.Context, opts ...grpc.CallOption) (GreetingService_HelloClientStreamClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_GreetingService_serviceDesc.Streams[1], "/myapp.GreetingService/HelloClientStream", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &greetingServiceHelloClientStreamClient{stream}
+	return x, nil
+}
+
+type GreetingService_HelloClientStreamClient interface {
+	Send(*HelloRequest) error
+	CloseAndRecv() (*HelloResponse, error)
+	grpc.ClientStream
+}
+
+type greetingServiceHelloClientStreamClient struct {
+	grpc.ClientStream
+}
+
+func (x *greetingServiceHelloClientStreamClient) Send(m *HelloRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *greetingServiceHelloClientStreamClient) CloseAndRecv() (*HelloResponse, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(HelloResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // GreetingServiceServer is the server API for GreetingService service.
 // All implementations must embed UnimplementedGreetingServiceServer
 // for forward compatibility
@@ -80,6 +116,8 @@ type GreetingServiceServer interface {
 	Hello(context.Context, *HelloRequest) (*HelloResponse, error)
 	// サーバーストリーミング
 	HelloServerStream(*HelloRequest, GreetingService_HelloServerStreamServer) error
+	// クライアントストリーミング
+	HelloClientStream(GreetingService_HelloClientStreamServer) error
 	mustEmbedUnimplementedGreetingServiceServer()
 }
 
@@ -92,6 +130,9 @@ func (UnimplementedGreetingServiceServer) Hello(context.Context, *HelloRequest) 
 }
 func (UnimplementedGreetingServiceServer) HelloServerStream(*HelloRequest, GreetingService_HelloServerStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method HelloServerStream not implemented")
+}
+func (UnimplementedGreetingServiceServer) HelloClientStream(GreetingService_HelloClientStreamServer) error {
+	return status.Errorf(codes.Unimplemented, "method HelloClientStream not implemented")
 }
 func (UnimplementedGreetingServiceServer) mustEmbedUnimplementedGreetingServiceServer() {}
 
@@ -145,6 +186,32 @@ func (x *greetingServiceHelloServerStreamServer) Send(m *HelloResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _GreetingService_HelloClientStream_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(GreetingServiceServer).HelloClientStream(&greetingServiceHelloClientStreamServer{stream})
+}
+
+type GreetingService_HelloClientStreamServer interface {
+	SendAndClose(*HelloResponse) error
+	Recv() (*HelloRequest, error)
+	grpc.ServerStream
+}
+
+type greetingServiceHelloClientStreamServer struct {
+	grpc.ServerStream
+}
+
+func (x *greetingServiceHelloClientStreamServer) SendAndClose(m *HelloResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *greetingServiceHelloClientStreamServer) Recv() (*HelloRequest, error) {
+	m := new(HelloRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _GreetingService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "myapp.GreetingService",
 	HandlerType: (*GreetingServiceServer)(nil),
@@ -159,6 +226,11 @@ var _GreetingService_serviceDesc = grpc.ServiceDesc{
 			StreamName:    "HelloServerStream",
 			Handler:       _GreetingService_HelloServerStream_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "HelloClientStream",
+			Handler:       _GreetingService_HelloClientStream_Handler,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "hello.proto",

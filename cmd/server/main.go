@@ -8,6 +8,8 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"errors"
+	"io"
 
 	hellopb "golang-grpc/pkg/grpc"
 	"google.golang.org/grpc"
@@ -26,6 +28,7 @@ func (s *myServer) Hello(ctx context.Context, req *hellopb.HelloRequest) (*hello
 
 func (s *myServer) HelloServerStream(req *hellopb.HelloRequest, stream hellopb.GreetingService_HelloServerStreamServer) error {
 	resCount := 10
+	fmt.Println("HelloServerStream")
 	for i := 0; i < resCount; i++ {
 		// Sendを使っている
 		if err := stream.Send(&hellopb.HelloResponse{
@@ -34,6 +37,25 @@ func (s *myServer) HelloServerStream(req *hellopb.HelloRequest, stream hellopb.G
 			return err
 		}
 		time.Sleep(time.Second * 1)
+	}
+	return nil
+}
+
+func (s *myServer) HelloClientStream(stream hellopb.GreetingService_HelloClientStreamServer) error {
+	nameList := make([]string, 0)
+	fmt.Println("HelloClientStream")
+	for {
+		req, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			message := fmt.Sprintf("Hello, %v!", nameList)
+			return stream.SendAndClose(&hellopb.HelloResponse{
+				Message: message,
+			})
+		}
+		if err != nil {
+			return err
+		}
+		nameList = append(nameList, req.GetName())
 	}
 	return nil
 }
